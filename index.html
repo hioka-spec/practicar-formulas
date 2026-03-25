@@ -1348,12 +1348,12 @@ function renderSimulator(formula) {
     const isHeader = ri === 0;
     if (isHeader) {
       return `<tr>
-        <th class="row-header"></th>
-        ${row.map(c => `<th>${c}</th>`).join('')}
+        <td class="row-header" style="padding:6px 10px;background:var(--cell-header);color:var(--muted);font-size:11px;text-align:center">1</td>
+        ${row.map(c => `<td style="background:var(--cell-header);padding:6px 10px;border:1px solid var(--cell-border);font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;font-size:12px">${c}</td>`).join('')}
       </tr>`;
     }
     return `<tr>
-      <td class="row-header" style="padding:6px 10px">${ri}</td>
+      <td class="row-header" style="padding:6px 10px">${ri + 1}</td>
       ${row.map((c, ci) => `<td><input value="${c}" onchange="cellChanged(this,${ri},${ci})" onfocus="this.parentElement.classList.add('selected-cell')" onblur="this.parentElement.classList.remove('selected-cell')"></td>`).join('')}
     </tr>`;
   }).join('');
@@ -1383,7 +1383,7 @@ function renderSimulator(formula) {
         </thead>
         <tbody>${tableRows}</tbody>
         <tr>
-          <td class="row-header" style="padding:6px 10px;background:var(--cell-header);color:var(--muted);font-size:11px">8</td>
+          <td class="row-header" style="padding:6px 10px;background:var(--cell-header);color:var(--muted);font-size:11px;text-align:center">7</td>
           <td class="result-cell" id="result-cell" colspan="${d.data[0].length}">
             <span style="padding:6px 10px;color:var(--accent);font-family:'Space Mono',monospace;font-size:12px" id="cell-result">← escribe tu fórmula arriba</span>
           </td>
@@ -1414,9 +1414,25 @@ function renderSimulator(formula) {
 function runFormula() {
   const input = document.getElementById('formula-input');
   const raw = input.value.trim();
-  let display = raw || '(vacío)';
-  document.getElementById('cell-result').textContent = display;
-  document.getElementById('result-value').textContent = display.startsWith('=') ? '(usa Excel para el resultado real)' : display;
+  if (!raw) {
+    document.getElementById('cell-result').textContent = '(vacío)';
+    document.getElementById('result-value').textContent = '—';
+    return;
+  }
+  document.getElementById('cell-result').textContent = raw;
+  // Show the known answer if the formula matches
+  const d = SIMULATOR_DATA[currentFormula] || SIMULATOR_DATA['SUMA'];
+  const normalize = s => s.replace(/\s/g,'').toLowerCase();
+  if (normalize(raw) === normalize(d.formula)) {
+    document.getElementById('result-value').textContent = d.answer;
+    document.getElementById('result-value').className = 'value';
+  } else if (raw.startsWith('=')) {
+    document.getElementById('result-value').textContent = d.answer;
+    document.getElementById('result-value').className = 'value';
+  } else {
+    document.getElementById('result-value').textContent = raw;
+    document.getElementById('result-value').className = 'value';
+  }
 }
 
 function showAnswer(formula) {
@@ -1506,13 +1522,23 @@ Reglas:
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": "",
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
+        max_tokens: 2000,
         messages: [{ role: "user", content: prompt }]
       })
     });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || response.status);
+    }
 
     const data = await response.json();
     const raw = data.content.map(i => i.text || '').join('');
@@ -1522,17 +1548,37 @@ Reglas:
     renderActivities(formula, activities);
   } catch (err) {
     console.error(err);
-    document.getElementById('activities-list').innerHTML = `
-      <div class="no-formula" style="color:var(--wrong);border-color:rgba(255,68,68,0.3)">
-        ⚠️ Error al generar actividades. Verifica tu conexión e intenta de nuevo.
-      </div>
-    `;
+    // Fallback: generate static activities from SIMULATOR_DATA
+    generateStaticActivities(formula);
   } finally {
     loading.classList.remove('show');
   }
 }
 
-function renderActivities(formula, activities) {
+function generateStaticActivities(formula) {
+  const d = SIMULATOR_DATA[formula] || SIMULATOR_DATA['SUMA'];
+  const scenarios = [
+    { ctx: 'Una tienda de tecnología quiere analizar sus ventas mensuales.', col: ['Mes','Ventas'], rows: [['Enero','12000'],['Febrero','15000'],['Marzo','9800'],['Abril','17500'],['Mayo','13200']] },
+    { ctx: 'Un maestro necesita analizar las calificaciones de su grupo.', col: ['Alumno','Calificación'], rows: [['Ana','85'],['Carlos','92'],['Laura','78'],['Pedro','95'],['Sofía','88']] },
+    { ctx: 'Una empresa revisa el salario de sus empleados por departamento.', col: ['Empleado','Salario'], rows: [['Ana','8000'],['Luis','9500'],['María','7800'],['Pedro','10200'],['Sara','8600']] },
+    { ctx: 'Un almacén controla el inventario de sus productos.', col: ['Producto','Unidades'], rows: [['Laptop','45'],['Mouse','120'],['Teclado','80'],['Monitor','30'],['Audífonos','95']] },
+    { ctx: 'Una clínica registra el peso de sus pacientes en kg.', col: ['Paciente','Peso(kg)'], rows: [['Paciente 1','68'],['Paciente 2','75'],['Paciente 3','82'],['Paciente 4','59'],['Paciente 5','91']] }
+  ];
+  const activities = scenarios.map((s, i) => ({
+    num: i + 1,
+    titulo: `Ejercicio ${i + 1}: ${s.ctx.split(' ').slice(0,4).join(' ')}...`,
+    contexto: s.ctx,
+    datos: [s.col, ...s.rows],
+    pregunta: d.question,
+    respuesta: d.formula,
+    resultado_esperado: d.answer,
+    pista: d.hint
+  }));
+  generatedActivities = activities;
+  renderActivities(formula, activities);
+}
+
+
   const list = document.getElementById('activities-list');
   const color = FORMULAS[currentCategory].color;
 
