@@ -1556,17 +1556,636 @@ Reglas:
 }
 
 function generateStaticActivities(formula) {
+  const activities = buildActivitiesFor(formula);
+  generatedActivities = activities;
+  renderActivities(formula, activities);
+}
+
+function buildActivitiesFor(formula) {
+  // ── helpers ──────────────────────────────────────────────────────────
+  const act = (titulo, contexto, datos, pregunta, respuesta, resultado_esperado, pista) =>
+    ({ titulo, contexto, datos, pregunta, respuesta, resultado_esperado, pista });
+
+  // ── per-formula activity banks ────────────────────────────────────────
+  const BANK = {
+
+    // ESTADÍSTICAS
+    'PROMEDIO': [
+      act('Calificaciones del grupo A', 'Una maestra registra las calificaciones del primer parcial.',
+        [['Alumno','Calificación'],['Ana','85'],['Carlos','90'],['Laura','78'],['Pedro','92'],['Sofía','88']],
+        '¿Cuál es el promedio de calificaciones?', '=PROMEDIO(B2:B6)', '86.6', 'Sintaxis: =PROMEDIO(rango)'),
+      act('Temperaturas de enero', 'Un meteorólogo registra la temperatura diaria de la semana.',
+        [['Día','Temperatura'],['Lunes','18'],['Martes','22'],['Miércoles','20'],['Jueves','25'],['Viernes','19']],
+        '¿Cuál es la temperatura promedio de la semana?', '=PROMEDIO(B2:B6)', '20.8', 'Sintaxis: =PROMEDIO(rango)'),
+      act('Ventas semanales', 'Una tienda registra sus ventas diarias.',
+        [['Día','Ventas ($)'],['Lunes','3200'],['Martes','4100'],['Miércoles','2800'],['Jueves','5000'],['Viernes','4500']],
+        '¿Cuál es el promedio de ventas diarias?', '=PROMEDIO(B2:B6)', '3920', 'Sintaxis: =PROMEDIO(rango)'),
+      act('Edades del equipo', 'Recursos Humanos registra la edad de los integrantes del equipo.',
+        [['Empleado','Edad'],['Roberto','28'],['Fernanda','34'],['Javier','45'],['Camila','29'],['Diego','38']],
+        '¿Cuál es la edad promedio del equipo?', '=PROMEDIO(B2:B6)', '34.8', 'Sintaxis: =PROMEDIO(rango)'),
+      act('Pesos de paquetes', 'Una paquetería registra el peso de los envíos del día en kg.',
+        [['Paquete','Peso(kg)'],['PKG-01','2.5'],['PKG-02','4.0'],['PKG-03','1.8'],['PKG-04','3.2'],['PKG-05','2.9']],
+        '¿Cuál es el peso promedio de los paquetes?', '=PROMEDIO(B2:B6)', '2.88', 'Sintaxis: =PROMEDIO(rango)')
+    ],
+
+    'SUMA': [
+      act('Ventas de productos tecnológicos', 'Una tienda registra sus ventas por categoría.',
+        [['Producto','Ventas ($)'],['Laptop','15000'],['Mouse','3200'],['Teclado','4500'],['Monitor','22000'],['Auriculares','6800']],
+        '¿Cuál es el total de ventas?', '=SUMA(B2:B6)', '51500', 'Sintaxis: =SUMA(rango)'),
+      act('Gastos del hogar', 'Una familia registra sus gastos mensuales.',
+        [['Concepto','Monto ($)'],['Renta','8000'],['Comida','4500'],['Transporte','1200'],['Servicios','900'],['Entretenimiento','600']],
+        '¿Cuál es el total de gastos del mes?', '=SUMA(B2:B6)', '15200', 'Sintaxis: =SUMA(rango)'),
+      act('Producción de la semana', 'Una fábrica registra las unidades producidas por día.',
+        [['Día','Unidades'],['Lunes','320'],['Martes','415'],['Miércoles','380'],['Jueves','440'],['Viernes','290']],
+        '¿Cuántas unidades se produjeron en total?', '=SUMA(B2:B6)', '1845', 'Sintaxis: =SUMA(rango)'),
+      act('Horas trabajadas', 'Un empleado registra sus horas de trabajo por día.',
+        [['Día','Horas'],['Lunes','8'],['Martes','9'],['Miércoles','7'],['Jueves','8'],['Viernes','6']],
+        '¿Cuántas horas trabajó en total la semana?', '=SUMA(B2:B6)', '38', 'Sintaxis: =SUMA(rango)'),
+      act('Inventario del almacén', 'Un almacén suma sus existencias por producto.',
+        [['Producto','Existencias'],['Sillas','45'],['Mesas','12'],['Lámparas','78'],['Estantes','23'],['Archiveros','34']],
+        '¿Cuántos artículos hay en total en el almacén?', '=SUMA(B2:B6)', '192', 'Sintaxis: =SUMA(rango)')
+    ],
+
+    'MAX': [
+      act('Temperaturas del mes', 'Una estación meteorológica registra temperaturas semanales.',
+        [['Semana','Temp. Máx (°C)'],['Semana 1','28'],['Semana 2','32'],['Semana 3','35'],['Semana 4','30'],['Semana 5','27']],
+        '¿Cuál fue la temperatura más alta del mes?', '=MAX(B2:B6)', '35', 'Sintaxis: =MAX(rango)'),
+      act('Ventas por vendedor', 'Un gerente revisa el mejor vendedor del mes.',
+        [['Vendedor','Ventas ($)'],['Ramírez','45000'],['García','62000'],['López','38000'],['Torres','71000'],['Morales','55000']],
+        '¿Cuál fue la venta más alta del mes?', '=MAX(B2:B6)', '71000', 'Sintaxis: =MAX(rango)'),
+      act('Calificaciones del examen', 'Un docente busca la calificación más alta.',
+        [['Alumno','Calificación'],['Valeria','88'],['Rodrigo','95'],['Paola','72'],['Andrés','91'],['Diana','85']],
+        '¿Cuál es la calificación más alta del grupo?', '=MAX(B2:B6)', '95', 'Sintaxis: =MAX(rango)'),
+      act('Producción por turno', 'Una fábrica compara la producción por turno.',
+        [['Turno','Piezas'],['Turno A','1200'],['Turno B','980'],['Turno C','1450'],['Turno D','1100'],['Turno E','870']],
+        '¿Cuál fue el turno con mayor producción?', '=MAX(B2:B6)', '1450', 'Sintaxis: =MAX(rango)'),
+      act('Tiempo de entrega', 'Una paquetería mide el tiempo de entrega en horas.',
+        [['Envío','Horas'],['ENV-01','24'],['ENV-02','48'],['ENV-03','18'],['ENV-04','72'],['ENV-05','36']],
+        '¿Cuál fue el mayor tiempo de entrega?', '=MAX(B2:B6)', '72', 'Sintaxis: =MAX(rango)')
+    ],
+
+    'MIN': [
+      act('Temperaturas del mes', 'Una estación meteorológica registra temperaturas semanales.',
+        [['Semana','Temp. Mín (°C)'],['Semana 1','15'],['Semana 2','12'],['Semana 3','18'],['Semana 4','10'],['Semana 5','14']],
+        '¿Cuál fue la temperatura más baja del mes?', '=MIN(B2:B6)', '10', 'Sintaxis: =MIN(rango)'),
+      act('Precios de productos', 'Un comprador compara precios de diferentes tiendas.',
+        [['Tienda','Precio ($)'],['Tienda A','450'],['Tienda B','380'],['Tienda C','520'],['Tienda D','395'],['Tienda E','410']],
+        '¿Cuál es el precio más bajo?', '=MIN(B2:B6)', '380', 'Sintaxis: =MIN(rango)'),
+      act('Calificaciones reprobatorias', 'Un docente busca la calificación más baja.',
+        [['Alumno','Calificación'],['Luis','45'],['Mónica','62'],['Héctor','38'],['Karina','55'],['Omar','70']],
+        '¿Cuál es la calificación más baja?', '=MIN(B2:B6)', '38', 'Sintaxis: =MIN(rango)'),
+      act('Tiempos de respuesta', 'Un call center mide el tiempo mínimo de atención en minutos.',
+        [['Agente','Tiempo (min)'],['Agente 1','8'],['Agente 2','5'],['Agente 3','12'],['Agente 4','3'],['Agente 5','9']],
+        '¿Cuál fue el tiempo de atención más corto?', '=MIN(B2:B6)', '3', 'Sintaxis: =MIN(rango)'),
+      act('Consumo eléctrico', 'Un ingeniero revisa el consumo mínimo en kWh por área.',
+        [['Área','kWh'],['Oficinas','320'],['Producción','890'],['Almacén','210'],['Cafetería','145'],['Seguridad','180']],
+        '¿Qué área consume menos electricidad?', '=MIN(B2:B6)', '145', 'Sintaxis: =MIN(rango)')
+    ],
+
+    'MEDIANA': [
+      act('Salarios del equipo', 'Recursos Humanos analiza la distribución salarial.',
+        [['Empleado','Salario ($)'],['Ana','8000'],['Luis','12000'],['María','9500'],['Pedro','7800'],['Sara','10200']],
+        '¿Cuál es el salario mediano del equipo?', '=MEDIANA(B2:B6)', '9500', 'Sintaxis: =MEDIANA(rango)'),
+      act('Edades de participantes', 'Una encuesta registra las edades de 5 participantes.',
+        [['Participante','Edad'],['P1','22'],['P2','35'],['P3','28'],['P4','41'],['P5','19']],
+        '¿Cuál es la edad mediana?', '=MEDIANA(B2:B6)', '28', 'Sintaxis: =MEDIANA(rango)'),
+      act('Tiempos de carrera', 'Una competencia registra los tiempos en minutos.',
+        [['Corredor','Tiempo(min)'],['Corredor 1','32'],['Corredor 2','45'],['Corredor 3','28'],['Corredor 4','38'],['Corredor 5','51']],
+        '¿Cuál es el tiempo mediano de la carrera?', '=MEDIANA(B2:B6)', '38', 'Sintaxis: =MEDIANA(rango)'),
+      act('Notas de evaluación', 'Un evaluador registra puntuaciones de una auditoría.',
+        [['Área','Puntuación'],['Finanzas','75'],['Operaciones','88'],['RRHH','92'],['IT','68'],['Legal','81']],
+        '¿Cuál es la puntuación mediana?', '=MEDIANA(B2:B6)', '81', 'Sintaxis: =MEDIANA(rango)'),
+      act('Precios de renta', 'Un agente inmobiliario compara rentas mensuales.',
+        [['Departamento','Renta ($)'],['Depto A','7500'],['Depto B','12000'],['Depto C','9200'],['Depto D','6800'],['Depto E','10500']],
+        '¿Cuál es la renta mediana?', '=MEDIANA(B2:B6)', '9200', 'Sintaxis: =MEDIANA(rango)')
+    ],
+
+    'CONTAR': [
+      act('Registro de asistencia', 'Un maestro registra las calificaciones; las celdas vacías son ausencias.',
+        [['Alumno','Calificación'],['Ana','85'],['Carlos',''],['Laura','78'],['Pedro',''],['Sofía','92']],
+        '¿Cuántos alumnos tienen calificación registrada?', '=CONTAR(B2:B6)', '3', 'CONTAR solo cuenta celdas con números.'),
+      act('Control de entregas', 'Un almacén registra las cantidades recibidas; vacío = pendiente.',
+        [['Proveedor','Cantidad'],['Prov A','500'],['Prov B',''],['Prov C','320'],['Prov D','150'],['Prov E','']],
+        '¿Cuántos proveedores ya entregaron?', '=CONTAR(B2:B6)', '3', 'CONTAR solo cuenta celdas con números.'),
+      act('Resultados de pruebas', 'Un laboratorio registra resultados numéricos de pruebas.',
+        [['Muestra','Resultado'],['M-01','7.2'],['M-02',''],['M-03','8.5'],['M-04','6.9'],['M-05','']],
+        '¿Cuántas muestras tienen resultado?', '=CONTAR(B2:B6)', '3', 'CONTAR solo cuenta celdas con números.'),
+      act('Encuesta de satisfacción', 'Una empresa recibe calificaciones del 1 al 10; vacío = no contestó.',
+        [['Cliente','Calificación'],['C-001','8'],['C-002',''],['C-003','9'],['C-004','7'],['C-005','']],
+        '¿Cuántos clientes respondieron la encuesta?', '=CONTAR(B2:B6)', '3', 'CONTAR solo cuenta celdas con números.'),
+      act('Mediciones de campo', 'Un técnico registra mediciones en diferentes puntos.',
+        [['Punto','Medición'],['P1','12.4'],['P2',''],['P3','15.8'],['P4',''],['P5','11.2']],
+        '¿Cuántos puntos tienen medición registrada?', '=CONTAR(B2:B6)', '3', 'CONTAR solo cuenta celdas con números.')
+    ],
+
+    'CONTARA': [
+      act('Registro de estado', 'Un supervisor registra el estado de cada tarea; vacío = sin asignar.',
+        [['Tarea','Estado'],['Tarea 1','Completada'],['Tarea 2',''],['Tarea 3','En proceso'],['Tarea 4','Pendiente'],['Tarea 5','']],
+        '¿Cuántas tareas tienen estado asignado?', '=CONTARA(B2:B6)', '3', 'CONTARA cuenta celdas no vacías (texto y números).'),
+      act('Lista de inscripción', 'Una escuela registra si los alumnos pagaron su inscripción.',
+        [['Alumno','Pago'],['Ana','Pagado'],['Carlos',''],['Laura','Pagado'],['Pedro',''],['Sofía','Becado']],
+        '¿Cuántos alumnos tienen registro de pago?', '=CONTARA(B2:B6)', '3', 'CONTARA cuenta celdas no vacías (texto y números).'),
+      act('Inventario de activos', 'Un área registra si cada activo tiene número de serie.',
+        [['Activo','N° Serie'],['Laptop','SN-001'],['Monitor',''],['Teclado','SN-003'],['Mouse','SN-004'],['Silla','']],
+        '¿Cuántos activos tienen número de serie?', '=CONTARA(B2:B6)', '3', 'CONTARA cuenta celdas no vacías (texto y números).'),
+      act('Respuestas de formulario', 'Un encuestador verifica cuántos campos fueron respondidos.',
+        [['Pregunta','Respuesta'],['P1','Sí'],['P2',''],['P3','No'],['P4',''],['P5','Tal vez']],
+        '¿Cuántas preguntas fueron respondidas?', '=CONTARA(B2:B6)', '3', 'CONTARA cuenta celdas no vacías (texto y números).'),
+      act('Control de firmas', 'Recursos Humanos verifica quién firmó el contrato.',
+        [['Empleado','Firma'],['Roberto','Firmado'],['Fernanda',''],['Javier','Firmado'],['Camila',''],['Diego','Firmado']],
+        '¿Cuántos empleados ya firmaron?', '=CONTARA(B2:B6)', '3', 'CONTARA cuenta celdas no vacías (texto y números).')
+    ],
+
+    'MODA.UNO': [
+      act('Calificaciones del grupo', 'Un docente busca la calificación más frecuente.',
+        [['Alumno','Calificación'],['Ana','85'],['Carlos','90'],['Laura','85'],['Pedro','78'],['Sofía','85']],
+        '¿Cuál es la calificación que más se repite?', '=MODA.UNO(B2:B6)', '85', 'Sintaxis: =MODA.UNO(rango)'),
+      act('Tallas de camiseta', 'Una tienda registra las tallas vendidas esta semana.',
+        [['Venta','Talla'],['1','M'],['2','L'],['3','M'],['4','XL'],['5','M']],
+        '¿Cuál es la talla más vendida?', '=MODA.UNO(B2:B6)', 'No aplica (texto)', 'MODA.UNO solo funciona con números.'),
+      act('Resultados de dados', 'Un estadístico lanza un dado 5 veces y registra los resultados.',
+        [['Lanzamiento','Resultado'],['1','4'],['2','2'],['3','4'],['4','6'],['5','4']],
+        '¿Cuál es el número que más salió?', '=MODA.UNO(B2:B6)', '4', 'Sintaxis: =MODA.UNO(rango)'),
+      act('Horas de sueño', 'Una clínica registra las horas de sueño de pacientes.',
+        [['Paciente','Horas'],['P1','7'],['P2','8'],['P3','6'],['P4','8'],['P5','8']],
+        '¿Cuántas horas de sueño son más frecuentes?', '=MODA.UNO(B2:B6)', '8', 'Sintaxis: =MODA.UNO(rango)'),
+      act('Número de hijos', 'Una encuesta demográfica registra el número de hijos.',
+        [['Familia','Hijos'],['F1','2'],['F2','1'],['F3','2'],['F4','3'],['F5','2']],
+        '¿Cuántos hijos es el valor más común?', '=MODA.UNO(B2:B6)', '2', 'Sintaxis: =MODA.UNO(rango)')
+    ],
+
+    // FECHA Y HORA
+    'HOY': [
+      act('Fecha de corte de nómina', 'Recursos Humanos necesita registrar la fecha actual de corte.',
+        [['Concepto','Fecha'],['Corte de nómina',''],['',''],['',''],['',''],['','']],
+        '¿Qué fórmula inserta automáticamente la fecha de hoy en B2?', '=HOY()', '(fecha actual del sistema)', 'HOY() no necesita argumentos: =HOY()'),
+      act('Cálculo de antigüedad', 'Se quiere saber la fecha actual para calcular años de servicio.',
+        [['Empleado','Fecha Ingreso','Hoy'],['Roberto','15/03/2018',''],['','',''],['','',''],['','',''],['','','']],
+        '¿Qué fórmula pone la fecha actual en C2?', '=HOY()', '(fecha actual del sistema)', 'HOY() devuelve la fecha de hoy sin hora.'),
+      act('Vigencia de contrato', 'Un área legal revisa si los contratos siguen vigentes comparando con hoy.',
+        [['Contrato','Vence','Hoy'],['CT-001','31/12/2025',''],['','',''],['','',''],['','',''],['','','']],
+        '¿Qué fórmula coloca la fecha de hoy en C2?', '=HOY()', '(fecha actual del sistema)', 'HOY() se actualiza automáticamente cada día.'),
+      act('Registro de auditoría', 'Un auditor necesita la fecha del día en que realiza cada registro.',
+        [['Actividad','Fecha Registro'],['Revisión de cuentas',''],['',''],['',''],['',''],['','']],
+        '¿Cómo insertas la fecha de hoy automáticamente?', '=HOY()', '(fecha actual del sistema)', 'HOY() cambia automáticamente cada vez que abres el archivo.'),
+      act('Inventario actualizado', 'Un encargado de almacén quiere registrar cuándo se actualizó el inventario.',
+        [['Campo','Valor'],['Última actualización',''],['',''],['',''],['',''],['','']],
+        '¿Qué fórmula registra automáticamente la fecha actual?', '=HOY()', '(fecha actual del sistema)', 'A diferencia de escribir la fecha a mano, HOY() siempre muestra la fecha actual.')
+    ],
+
+    'AÑO': [
+      act('Antigüedad de empleados', 'RRHH registra las fechas de ingreso y extrae el año.',
+        [['Empleado','Fecha Ingreso'],['Roberto','15/03/2018'],['Fernanda','22/07/2020'],['Javier','01/01/2015'],['Camila','10/09/2022'],['Diego','30/06/2019']],
+        '¿Qué fórmula extrae el año de la fecha de ingreso de Roberto (A2)?', '=AÑO(A2)', '2018', 'Sintaxis: =AÑO(fecha)'),
+      act('Año de fabricación', 'Un técnico registra fechas de fabricación de equipos.',
+        [['Equipo','Fecha Fabricación'],['Impresora','05/08/2019'],['Laptop','12/03/2021'],['Proyector','20/11/2017'],['Servidor','01/07/2020'],['Switch','14/02/2022']],
+        '¿Qué fórmula extrae el año de fabricación de la Impresora?', '=AÑO(B2)', '2019', 'Sintaxis: =AÑO(fecha)'),
+      act('Año de vencimiento de garantías', 'Un área de soporte revisa cuándo vencen las garantías.',
+        [['Producto','Fecha Garantía'],['Monitor','30/06/2025'],['Teclado','15/12/2024'],['Mouse','01/08/2026'],['Webcam','22/03/2025'],['Audífonos','10/10/2024']],
+        '¿En qué año vence la garantía del Monitor?', '=AÑO(B2)', '2025', 'Sintaxis: =AÑO(fecha)'),
+      act('Año de publicaciones', 'Una biblioteca registra las fechas de publicación de libros.',
+        [['Libro','Fecha Publicación'],['Excel Avanzado','12/04/2020'],['Python Básico','05/09/2018'],['Estadística','30/01/2022'],['Base de Datos','17/07/2019'],['Redes','08/03/2021']],
+        '¿En qué año fue publicado "Excel Avanzado"?', '=AÑO(B2)', '2020', 'Sintaxis: =AÑO(fecha)'),
+      act('Clasificar pedidos por año', 'Un vendedor quiere saber el año de cada pedido.',
+        [['Pedido','Fecha'],['PED-001','14/02/2021'],['PED-002','30/08/2022'],['PED-003','05/01/2020'],['PED-004','19/11/2023'],['PED-005','27/06/2021']],
+        '¿Qué fórmula extrae el año del pedido PED-001?', '=AÑO(B2)', '2021', 'Sintaxis: =AÑO(fecha)')
+    ],
+
+    'MES': [
+      act('Mes de ingreso de empleados', 'RRHH quiere saber en qué mes ingresaron los empleados.',
+        [['Empleado','Fecha Ingreso'],['Ana','15/03/2021'],['Carlos','22/07/2020'],['Laura','01/11/2019'],['Pedro','10/04/2022'],['Sofía','30/08/2021']],
+        '¿Qué fórmula extrae el mes de ingreso de Ana?', '=MES(B2)', '3', 'Sintaxis: =MES(fecha) — devuelve número del 1 al 12'),
+      act('Mes de vencimiento de pólizas', 'Un agente de seguros quiere identificar el mes de vencimiento.',
+        [['Póliza','Fecha Vencimiento'],['POL-01','28/02/2025'],['POL-02','15/06/2025'],['POL-03','01/09/2024'],['POL-04','30/11/2024'],['POL-05','20/01/2026']],
+        '¿En qué mes vence la póliza POL-01?', '=MES(B2)', '2', 'Sintaxis: =MES(fecha)'),
+      act('Mes de compras', 'Un contador clasifica las compras por mes.',
+        [['Factura','Fecha'],['FAC-001','05/01/2024'],['FAC-002','18/04/2024'],['FAC-003','22/07/2024'],['FAC-004','09/10/2024'],['FAC-005','30/12/2024']],
+        '¿En qué mes se realizó la factura FAC-002?', '=MES(B2)', '4', 'Sintaxis: =MES(fecha)'),
+      act('Temporada de nacimientos', 'Una clínica analiza el mes de nacimiento de pacientes.',
+        [['Paciente','Fecha Nacimiento'],['P1','12/03/1995'],['P2','25/08/2000'],['P3','04/12/1988'],['P4','17/05/2003'],['P5','30/01/1975']],
+        '¿En qué mes nació el paciente P3?', '=MES(B3)', '12', 'Sintaxis: =MES(fecha)'),
+      act('Mes de entrega de proyectos', 'Un PM quiere saber en qué mes se entregó cada proyecto.',
+        [['Proyecto','Fecha Entrega'],['Proyecto A','15/02/2024'],['Proyecto B','30/05/2024'],['Proyecto C','12/09/2024'],['Proyecto D','28/11/2024'],['Proyecto E','10/03/2025']],
+        '¿En qué mes se entregó el Proyecto C?', '=MES(B4)', '9', 'Sintaxis: =MES(fecha)')
+    ],
+
+    'DIA': [
+      act('Día de pago de nómina', 'RRHH necesita extraer el día exacto de los pagos.',
+        [['Empleado','Fecha Pago'],['Ana','15/01/2024'],['Carlos','15/02/2024'],['Laura','15/03/2024'],['Pedro','15/04/2024'],['Sofía','15/05/2024']],
+        '¿Qué fórmula extrae el día de pago de Ana?', '=DIA(B2)', '15', 'Sintaxis: =DIA(fecha)'),
+      act('Día de vencimiento de facturas', 'Un contador revisa en qué día vencen las facturas.',
+        [['Factura','Vencimiento'],['F-001','28/02/2024'],['F-002','15/03/2024'],['F-003','30/04/2024'],['F-004','10/05/2024'],['F-005','25/06/2024']],
+        '¿En qué día vence la factura F-003?', '=DIA(B4)', '30', 'Sintaxis: =DIA(fecha)'),
+      act('Día de inicio de contratos', 'Legal quiere saber en qué día del mes inician los contratos.',
+        [['Contrato','Inicio'],['CT-01','01/01/2024'],['CT-02','15/02/2024'],['CT-03','10/03/2024'],['CT-04','20/04/2024'],['CT-05','05/05/2024']],
+        '¿En qué día inicia el contrato CT-04?', '=DIA(B5)', '20', 'Sintaxis: =DIA(fecha)'),
+      act('Día de entrega de pedidos', 'Logística extrae el día de entrega para planificar rutas.',
+        [['Pedido','Fecha Entrega'],['PED-01','03/06/2024'],['PED-02','17/06/2024'],['PED-03','25/06/2024'],['PED-04','08/07/2024'],['PED-05','22/07/2024']],
+        '¿En qué día se entrega el pedido PED-02?', '=DIA(B3)', '17', 'Sintaxis: =DIA(fecha)'),
+      act('Día de registro de pacientes', 'Una clínica necesita el día exacto de cada registro.',
+        [['Paciente','Fecha Registro'],['P-01','12/08/2024'],['P-02','04/09/2024'],['P-03','29/09/2024'],['P-04','18/10/2024'],['P-05','01/11/2024']],
+        '¿En qué día se registró el paciente P-03?', '=DIA(B4)', '29', 'Sintaxis: =DIA(fecha)')
+    ],
+
+    'SIFECHA': [
+      act('Antigüedad de empleados en años', 'RRHH calcula los años de servicio de cada empleado.',
+        [['Empleado','Ingreso','Hoy'],['Roberto','15/03/2018','15/03/2024'],['Fernanda','22/07/2020','15/03/2024'],['Javier','01/01/2015','15/03/2024'],['Camila','10/09/2022','15/03/2024'],['Diego','30/06/2019','15/03/2024']],
+        '¿Cuántos años completos tiene Roberto desde su ingreso?', '=SIFECHA(B2,C2,"Y")', '6', 'Sintaxis: =SIFECHA(inicio, fin, "Y") para años'),
+      act('Edad de pacientes en años', 'Una clínica calcula la edad exacta de los pacientes.',
+        [['Paciente','Nacimiento','Hoy'],['P-01','12/05/1990','12/05/2024'],['P-02','30/08/2000','12/05/2024'],['P-03','15/03/1985','12/05/2024'],['P-04','01/01/2010','12/05/2024'],['P-05','20/11/1975','12/05/2024']],
+        '¿Cuántos años tiene el paciente P-01?', '=SIFECHA(B2,C2,"Y")', '34', 'Sintaxis: =SIFECHA(inicio, fin, "Y")'),
+      act('Días desde la última compra', 'Un CRM calcula cuántos días han pasado desde la última compra.',
+        [['Cliente','Última Compra','Hoy'],['C-01','01/01/2024','01/04/2024'],['C-02','15/02/2024','01/04/2024'],['C-03','20/03/2024','01/04/2024'],['C-04','10/12/2023','01/04/2024'],['C-05','05/03/2024','01/04/2024']],
+        '¿Cuántos días han pasado desde la última compra del cliente C-01?', '=SIFECHA(B2,C2,"D")', '91', 'Usa "D" para contar días entre fechas.'),
+      act('Meses de vigencia de suscripción', 'Una empresa digital calcula cuántos meses lleva cada suscriptor.',
+        [['Suscriptor','Inicio','Hoy'],['S-01','01/01/2024','01/07/2024'],['S-02','15/03/2024','01/07/2024'],['S-03','01/04/2024','01/07/2024'],['S-04','01/02/2024','01/07/2024'],['S-05','15/05/2024','01/07/2024']],
+        '¿Cuántos meses completos lleva el suscriptor S-01?', '=SIFECHA(B2,C2,"M")', '6', 'Usa "M" para contar meses completos.'),
+      act('Tiempo de garantía transcurrido', 'Soporte técnico calcula cuántos meses lleva activa la garantía.',
+        [['Equipo','Compra','Hoy'],['Laptop','15/01/2023','15/01/2024'],['Monitor','20/03/2023','15/01/2024'],['Impresora','01/07/2023','15/01/2024'],['Teclado','10/09/2023','15/01/2024'],['Mouse','30/11/2023','15/01/2024']],
+        '¿Cuántos meses completos lleva activa la garantía de la Laptop?', '=SIFECHA(B2,C2,"M")', '12', 'Sintaxis: =SIFECHA(inicio, fin, "M")')
+    ],
+
+    'DIAS.LAB': [
+      act('Días hábiles para entrega', 'Logística calcula los días laborales disponibles para cada entrega.',
+        [['Pedido','Inicio','Entrega'],['PED-01','01/01/2024','31/01/2024'],['PED-02','01/02/2024','29/02/2024'],['PED-03','01/03/2024','31/03/2024'],['PED-04','01/04/2024','30/04/2024'],['PED-05','01/05/2024','31/05/2024']],
+        '¿Cuántos días laborales hay en enero 2024 (del 01/01 al 31/01)?', '=DIAS.LAB(B2,C2)', '23', 'Sintaxis: =DIAS.LAB(inicio, fin)'),
+      act('Plazo de proyecto en días hábiles', 'Un PM calcula cuántos días hábiles tiene cada fase del proyecto.',
+        [['Fase','Inicio','Fin'],['Análisis','01/04/2024','30/04/2024'],['Diseño','01/05/2024','31/05/2024'],['Desarrollo','01/06/2024','30/06/2024'],['Pruebas','01/07/2024','31/07/2024'],['Entrega','01/08/2024','31/08/2024']],
+        '¿Cuántos días hábiles tiene la fase de Análisis?', '=DIAS.LAB(B2,C2)', '22', 'Sintaxis: =DIAS.LAB(inicio, fin)'),
+      act('Días laborales para cotizaciones', 'Ventas calcula el plazo en días hábiles para responder cotizaciones.',
+        [['Cotización','Recibida','Límite'],['COT-01','01/03/2024','15/03/2024'],['COT-02','05/03/2024','20/03/2024'],['COT-03','10/03/2024','25/03/2024'],['COT-04','15/03/2024','31/03/2024'],['COT-05','20/03/2024','05/04/2024']],
+        '¿Cuántos días hábiles hay para responder COT-01?', '=DIAS.LAB(B2,C2)', '11', 'Sintaxis: =DIAS.LAB(inicio, fin)'),
+      act('Cálculo de vacaciones laborales', 'RRHH verifica cuántos días laborales corresponden al período de vacaciones.',
+        [['Empleado','Inicio Vac.','Fin Vac.'],['Ana','01/07/2024','15/07/2024'],['Carlos','15/07/2024','31/07/2024'],['Laura','01/08/2024','15/08/2024'],['Pedro','15/08/2024','31/08/2024'],['Sofía','01/09/2024','15/09/2024']],
+        '¿Cuántos días laborales tiene el periodo de vacaciones de Ana?', '=DIAS.LAB(B2,C2)', '11', 'Sintaxis: =DIAS.LAB(inicio, fin)'),
+      act('Tiempo de respuesta a reclamos', 'Servicio al cliente mide el plazo hábil para resolver cada reclamo.',
+        [['Reclamo','Apertura','Cierre'],['RCL-01','03/06/2024','28/06/2024'],['RCL-02','10/06/2024','05/07/2024'],['RCL-03','17/06/2024','12/07/2024'],['RCL-04','24/06/2024','19/07/2024'],['RCL-05','01/07/2024','26/07/2024']],
+        '¿Cuántos días laborales se tardó en resolver el RCL-01?', '=DIAS.LAB(B2,C2)', '19', 'Sintaxis: =DIAS.LAB(inicio, fin)')
+    ],
+
+    'FRACC.AÑO': [
+      act('Fracción del año de contratos', 'Legal calcula qué fracción del año estuvo vigente cada contrato.',
+        [['Contrato','Inicio','Fin'],['CT-01','01/01/2024','01/07/2024'],['CT-02','01/04/2024','01/10/2024'],['CT-03','01/01/2024','01/04/2024'],['CT-04','01/07/2024','31/12/2024'],['CT-05','01/03/2024','01/09/2024']],
+        '¿Qué fracción del año representa el contrato CT-01?', '=FRACC.AÑO(B2,C2)', '0.5', 'Sintaxis: =FRACC.AÑO(inicio, fin)'),
+      act('Fracción de año trabajado', 'RRHH calcula la proporción del año que trabajó cada empleado temporal.',
+        [['Empleado','Ingreso','Salida'],['Temporal 1','01/01/2024','30/06/2024'],['Temporal 2','01/03/2024','31/08/2024'],['Temporal 3','01/04/2024','30/09/2024'],['Temporal 4','01/06/2024','30/11/2024'],['Temporal 5','01/07/2024','31/12/2024']],
+        '¿Qué fracción del año trabajó el Temporal 1?', '=FRACC.AÑO(B2,C2)', '0.5', 'Sintaxis: =FRACC.AÑO(inicio, fin)'),
+      act('Proporción de proyecto completado', 'Un PM calcula qué parte del año tomó cada fase.',
+        [['Fase','Inicio','Fin'],['Fase 1','01/01/2024','31/03/2024'],['Fase 2','01/04/2024','30/06/2024'],['Fase 3','01/07/2024','30/09/2024'],['Fase 4','01/10/2024','31/12/2024'],['Fase 5','01/01/2024','30/06/2024']],
+        '¿Qué fracción del año representa la Fase 1?', '=FRACC.AÑO(B2,C2)', '0.25', 'Sintaxis: =FRACC.AÑO(inicio, fin)'),
+      act('Interés proporcional anual', 'Finanzas calcula la fracción del año para calcular intereses.',
+        [['Préstamo','Inicio','Fin'],['PR-01','15/01/2024','15/07/2024'],['PR-02','01/02/2024','01/08/2024'],['PR-03','01/03/2024','01/09/2024'],['PR-04','15/04/2024','15/10/2024'],['PR-05','01/06/2024','01/12/2024']],
+        '¿Qué fracción del año corresponde al préstamo PR-01?', '=FRACC.AÑO(B2,C2)', '0.5', 'Sintaxis: =FRACC.AÑO(inicio, fin)'),
+      act('Depreciación proporcional', 'Contabilidad calcula la fracción del año para depreciar activos.',
+        [['Activo','Compra','Año Fiscal'],['Laptop','01/04/2024','31/12/2024'],['Monitor','01/07/2024','31/12/2024'],['Impresora','01/10/2024','31/12/2024'],['Servidor','01/01/2024','31/12/2024'],['Switch','01/01/2024','30/06/2024']],
+        '¿Qué fracción del año se deprecia el Monitor (julio a diciembre)?', '=FRACC.AÑO(B3,C3)', '0.5', 'Sintaxis: =FRACC.AÑO(inicio, fin)')
+    ],
+
+    'NSHORA': [
+      act('Registro de horario laboral', 'RRHH registra la hora de entrada de cada empleado.',
+        [['Empleado','Hora','Min','Seg'],['Ana','9','0','0'],['Carlos','8','30','0'],['Laura','10','15','0'],['Pedro','9','45','0'],['Sofía','8','0','0']],
+        '¿Qué fórmula crea el valor de hora 9:00:00 para Ana?', '=NSHORA(B2,C2,D2)', '9:00:00', 'Sintaxis: =NSHORA(hora, minuto, segundo)'),
+      act('Horario de citas médicas', 'Una clínica programa citas usando valores separados.',
+        [['Cita','Hora','Min','Seg'],['Cita 1','8','30','0'],['Cita 2','9','0','0'],['Cita 3','10','45','0'],['Cita 4','11','15','0'],['Cita 5','14','0','0']],
+        '¿Qué fórmula construye la hora de la Cita 1 (8:30:00)?', '=NSHORA(B2,C2,D2)', '8:30:00', 'Sintaxis: =NSHORA(hora, minuto, segundo)'),
+      act('Programación de tareas automáticas', 'Un sistema registra la hora de ejecución de tareas.',
+        [['Tarea','Hora','Min','Seg'],['Backup','2','0','0'],['Reporte','8','30','0'],['Limpieza','23','59','59'],['Envío','12','0','0'],['Alerta','18','30','0']],
+        '¿Qué fórmula crea la hora de ejecución del Backup (02:00:00)?', '=NSHORA(B2,C2,D2)', '2:00:00', 'Sintaxis: =NSHORA(hora, minuto, segundo)'),
+      act('Control de turnos', 'Una fábrica programa el inicio de cada turno.',
+        [['Turno','Hora','Min','Seg'],['Turno 1','6','0','0'],['Turno 2','14','0','0'],['Turno 3','22','0','0'],['Descanso','10','30','0'],['Almuerzo','13','0','0']],
+        '¿Qué fórmula crea la hora de inicio del Turno 2 (14:00:00)?', '=NSHORA(B3,C3,D3)', '14:00:00', 'Sintaxis: =NSHORA(hora, minuto, segundo)'),
+      act('Registro de eventos deportivos', 'Un cronometrador registra los tiempos de cada prueba.',
+        [['Prueba','Hora','Min','Seg'],['100m planos','10','0','0'],['400m','10','15','0'],['Salto largo','10','45','0'],['Lanzamiento','11','30','0'],['Relevos','14','0','0']],
+        '¿Qué fórmula construye la hora 10:15:00 para los 400m?', '=NSHORA(B3,C3,D3)', '10:15:00', 'Sintaxis: =NSHORA(hora, minuto, segundo)')
+    ],
+
+    // TEXTO
+    'CONCATENAR': [
+      act('Nombre completo de empleados', 'RRHH une nombre y apellido en una sola celda.',
+        [['Nombre','Apellido'],['Ana','García'],['Carlos','López'],['Laura','Martínez'],['Pedro','Sánchez'],['Sofía','Ruiz']],
+        '¿Qué fórmula une el nombre y apellido de Ana con un espacio entre ellos?', '=CONCATENAR(A2," ",B2)', 'Ana García', 'Sintaxis: =CONCATENAR(texto1, texto2, ...)'),
+      act('Código de producto', 'Un almacén genera códigos combinando categoría y número.',
+        [['Categoría','Número'],['ELEC','001'],['HOGAR','015'],['ROPA','032'],['SPORT','008'],['TECH','024']],
+        '¿Qué fórmula une la categoría y el número de la primera fila?', '=CONCATENAR(A2,"-",B2)', 'ELEC-001', 'Sintaxis: =CONCATENAR(texto1, separador, texto2)'),
+      act('Dirección completa', 'Un sistema une calle, número y colonia en una dirección.',
+        [['Calle','Número','Colonia'],['Av. Reforma','125','Centro'],['Blvd. Norte','42','Las Flores'],['Calle 5','8','Industrial'],['Paseo Sur','300','Las Palmas'],['Av. Juárez','77','Moderna']],
+        '¿Qué fórmula une calle, número y colonia con comas?', '=CONCATENAR(A2,", ",B2,", ",C2)', 'Av. Reforma, 125, Centro', 'Puedes añadir cualquier texto entre los argumentos.'),
+      act('Correo electrónico', 'Marketing genera correos a partir del nombre y dominio.',
+        [['Usuario','Dominio'],['ana.garcia','empresa.com'],['carlos.lopez','empresa.com'],['laura.mtz','empresa.com'],['pedro.san','empresa.com'],['sofia.ruiz','empresa.com']],
+        '¿Qué fórmula crea el correo de Ana?', '=CONCATENAR(A2,"@",B2)', 'ana.garcia@empresa.com', 'Sintaxis: =CONCATENAR(usuario,"@",dominio)'),
+      act('Mensaje personalizado', 'Una plataforma genera mensajes de bienvenida con el nombre del usuario.',
+        [['Nombre',''],['Valeria',''],['Rodrigo',''],['Paola',''],['Andrés',''],['Diana','']],
+        '¿Qué fórmula crea el mensaje "Bienvenida, Valeria"?', '=CONCATENAR("Bienvenida, ",A2)', 'Bienvenida, Valeria', 'Puedes combinar texto fijo con referencias a celdas.')
+    ],
+
+    'MAYUSC': [
+      act('Normalizar nombres de clientes', 'Un sistema requiere todos los nombres en mayúsculas.',
+        [['Nombre Original',''],['ana garcía',''],['carlos lópez',''],['laura martínez',''],['pedro sánchez',''],['sofía ruiz','']],
+        '¿Qué fórmula convierte "ana garcía" a mayúsculas?', '=MAYUSC(A2)', 'ANA GARCÍA', 'Sintaxis: =MAYUSC(texto)'),
+      act('Estandarizar códigos de producto', 'Un catálogo requiere todos los códigos en mayúsculas.',
+        [['Código Ingresado',''],['elec-001',''],['hogar-015',''],['ropa-032',''],['sport-008',''],['tech-024','']],
+        '¿Qué fórmula convierte "elec-001" a mayúsculas?', '=MAYUSC(A2)', 'ELEC-001', 'Sintaxis: =MAYUSC(texto)'),
+      act('Uniformizar siglas de departamentos', 'RRHH estandariza los nombres de departamentos.',
+        [['Departamento',''],['ventas',''],['recursos humanos',''],['finanzas',''],['producción',''],['logística','']],
+        '¿Qué fórmula pone "ventas" en mayúsculas?', '=MAYUSC(A2)', 'VENTAS', 'Sintaxis: =MAYUSC(texto)'),
+      act('Convertir claves de usuario', 'Un sistema de seguridad convierte las claves a mayúsculas.',
+        [['Clave Ingresada',''],['admin2024',''],['user_mx',''],['gerente01',''],['soporte_it',''],['director_gral','']],
+        '¿Qué fórmula convierte "admin2024" a mayúsculas?', '=MAYUSC(A2)', 'ADMIN2024', 'Sintaxis: =MAYUSC(texto)'),
+      act('Encabezados de reportes', 'Un analista pone en mayúsculas los títulos de sus reportes.',
+        [['Título Original',''],['resumen ejecutivo',''],['análisis de ventas',''],['reporte mensual',''],['proyección anual',''],['balance general','']],
+        '¿Qué fórmula pone "resumen ejecutivo" en mayúsculas?', '=MAYUSC(A2)', 'RESUMEN EJECUTIVO', 'Sintaxis: =MAYUSC(texto)')
+    ],
+
+    'MINUSC': [
+      act('Correos electrónicos en minúsculas', 'Un sistema valida que los correos estén en minúsculas.',
+        [['Correo Ingresado',''],['ANA.GARCIA@EMPRESA.COM',''],['CARLOS.LOPEZ@EMPRESA.COM',''],['LAURA.MTZ@EMPRESA.COM',''],['PEDRO.SAN@EMPRESA.COM',''],['SOFIA.RUIZ@EMPRESA.COM','']],
+        '¿Qué fórmula convierte el correo de Ana a minúsculas?', '=MINUSC(A2)', 'ana.garcia@empresa.com', 'Sintaxis: =MINUSC(texto)'),
+      act('Normalizar contraseñas', 'Un sistema convierte contraseñas a minúsculas para comparación.',
+        [['Contraseña',''],['EXCEL2024',''],['ADMIN_MX',''],['USER01',''],['SOPORTE',''],['DIRECTOR']],
+        '¿Qué fórmula convierte "EXCEL2024" a minúsculas?', '=MINUSC(A2)', 'excel2024', 'Sintaxis: =MINUSC(texto)'),
+      act('Estandarizar nombres de ciudades', 'Una base de datos normaliza los nombres de ciudades.',
+        [['Ciudad',''],['CIUDAD DE MÉXICO',''],['GUADALAJARA',''],['MONTERREY',''],['TIJUANA',''],['PUEBLA','']],
+        '¿Qué fórmula convierte "CIUDAD DE MÉXICO" a minúsculas?', '=MINUSC(A2)', 'ciudad de méxico', 'Sintaxis: =MINUSC(texto)'),
+      act('Uniformizar etiquetas de productos', 'E-commerce requiere etiquetas en minúsculas.',
+        [['Etiqueta',''],['LAPTOP GAMING',''],['MOUSE INALÁMBRICO',''],['TECLADO MECÁNICO',''],['MONITOR CURVO',''],['AURICULARES BT','']],
+        '¿Qué fórmula convierte "LAPTOP GAMING" a minúsculas?', '=MINUSC(A2)', 'laptop gaming', 'Sintaxis: =MINUSC(texto)'),
+      act('Limpiar datos de una encuesta', 'Algunos encuestados escribieron con MAYÚSCULAS sus respuestas.',
+        [['Respuesta',''],['SÍ',''],['NO',''],['TAL VEZ',''],['NO SÉ',''],['QUIZÁS','']],
+        '¿Qué fórmula convierte "SÍ" a minúsculas?', '=MINUSC(A2)', 'sí', 'Sintaxis: =MINUSC(texto)')
+    ],
+
+    'LARGO': [
+      act('Validar longitud de contraseñas', 'IT verifica que las contraseñas tengan el largo correcto.',
+        [['Contraseña',''],['Excel2024!',''],['Admin',''],['Soporte_MX',''],['Dir',''],['User2024']],
+        '¿Cuántos caracteres tiene la contraseña "Excel2024!"?', '=LARGO(A2)', '10', 'Sintaxis: =LARGO(texto)'),
+      act('Verificar códigos de producto', 'Control de calidad valida que los códigos tengan 8 caracteres.',
+        [['Código',''],['ELEC-001',''],['HG-15',''],['RPA-032',''],['SP-008',''],['TC-024','']],
+        '¿Cuántos caracteres tiene el código "ELEC-001"?', '=LARGO(A2)', '8', 'Sintaxis: =LARGO(texto)'),
+      act('Revisar longitud de CURP', 'RRHH verifica que las CURPs tengan 18 caracteres.',
+        [['Empleado','CURP'],['Ana','GARA950315MDFRCN09'],['Carlos','LOCA880720HDFPRL02'],['Laura','MALM010204MDFRNR05'],['Pedro','SANP750930HDFNDR08'],['Sofía','RUIS991128MDFZFS01']],
+        '¿Cuántos caracteres tiene la CURP de Ana?', '=LARGO(B2)', '18', 'Sintaxis: =LARGO(texto)'),
+      act('Longitud de descripciones de productos', 'Marketing verifica que las descripciones no excedan el límite.',
+        [['Producto','Descripción'],['Laptop','Laptop de alta gama'],['Mouse','Mouse ergonómico'],['Teclado','Teclado mecánico RGB'],['Monitor','Monitor 4K curvo'],['Headset','Auriculares inalámbricos']],
+        '¿Cuántos caracteres tiene la descripción de la Laptop?', '=LARGO(B2)', '19', 'Sintaxis: =LARGO(texto)'),
+      act('Validar RFC', 'Contabilidad verifica que los RFC tengan la longitud correcta (12 o 13 caracteres).',
+        [['Empresa','RFC'],['Tech SA','GARA950315MX0'],['Comercio','LOCAB8807209'],['Servicios','MALM010204MX5'],['Industria','SANP750930MX8'],['Consultoría','RUIS991128MX1']],
+        '¿Cuántos caracteres tiene el RFC de Tech SA?', '=LARGO(B2)', '13', 'Sintaxis: =LARGO(texto)')
+    ],
+
+    'IZQUIERDA': [
+      act('Extraer prefijo de código', 'Un almacén extrae los 4 caracteres iniciales del código.',
+        [['Código',''],['ELEC-001',''],['HOGAR-015',''],['ROPA-032',''],['SPORT-008',''],['TECH-024','']],
+        '¿Qué fórmula extrae "ELEC" de "ELEC-001"?', '=IZQUIERDA(A2,4)', 'ELEC', 'Sintaxis: =IZQUIERDA(texto, núm_caracteres)'),
+      act('Extraer clave de país del RFC', 'RRHH extrae los 4 primeros caracteres del RFC.',
+        [['Empleado','RFC'],['Ana','GARA950315MX0'],['Carlos','LOCA880720HDF'],['Laura','MALM010204MDF'],['Pedro','SANP750930HDF'],['Sofía','RUIS991128MDF']],
+        '¿Qué fórmula extrae las primeras 4 letras del RFC de Ana?', '=IZQUIERDA(B2,4)', 'GARA', 'Sintaxis: =IZQUIERDA(texto, núm_caracteres)'),
+      act('Extraer año de un código de proyecto', 'Un PM extrae el año de inicio del código de proyecto.',
+        [['Proyecto','Código'],['Alpha','2024-ALPHA-01'],['Beta','2023-BETA-02'],['Gamma','2022-GAMMA-03'],['Delta','2024-DELTA-04'],['Epsilon','2023-EPS-05']],
+        '¿Qué fórmula extrae "2024" del código del proyecto Alpha?', '=IZQUIERDA(B2,4)', '2024', 'Sintaxis: =IZQUIERDA(texto, núm_caracteres)'),
+      act('Extraer iniciales de nombre', 'Un sistema extrae la primera letra de los nombres.',
+        [['Nombre',''],['Roberto',''],['Fernanda',''],['Javier',''],['Camila',''],['Diego','']],
+        '¿Qué fórmula extrae la primera letra de "Roberto"?', '=IZQUIERDA(A2,1)', 'R', 'Sintaxis: =IZQUIERDA(texto, núm_caracteres)'),
+      act('Extraer código de área telefónica', 'Un directorio extrae el código de área (3 dígitos) del teléfono.',
+        [['Empleado','Teléfono'],['Ana','614-123-4567'],['Carlos','33-1234-5678'],['Laura','55-5678-9012'],['Pedro','81-9876-5432'],['Sofía','222-345-6789']],
+        '¿Qué fórmula extrae "614" del teléfono de Ana?', '=IZQUIERDA(B2,3)', '614', 'Sintaxis: =IZQUIERDA(texto, núm_caracteres)')
+    ],
+
+    'DERECHA': [
+      act('Extraer extensión de archivo', 'IT extrae los últimos 4 caracteres (extensión) de los nombres de archivo.',
+        [['Archivo',''],['reporte.xlsx',''],['presentacion.pptx',''],['datos.csv',''],['imagen.png',''],['script.py','']],
+        '¿Qué fórmula extrae ".xlsx" de "reporte.xlsx"?', '=DERECHA(A2,5)', '.xlsx', 'Sintaxis: =DERECHA(texto, núm_caracteres)'),
+      act('Extraer número de pedido', 'Un almacén extrae los últimos 3 dígitos del código.',
+        [['Código',''],['ELEC-001',''],['HOGAR-015',''],['ROPA-032',''],['SPORT-008',''],['TECH-024','']],
+        '¿Qué fórmula extrae "001" de "ELEC-001"?', '=DERECHA(A2,3)', '001', 'Sintaxis: =DERECHA(texto, núm_caracteres)'),
+      act('Extraer últimos dígitos de tarjeta', 'Finanzas extrae los últimos 4 dígitos de la tarjeta.',
+        [['Cliente','Tarjeta'],['Ana','**** **** **** 1234'],['Carlos','**** **** **** 5678'],['Laura','**** **** **** 9012'],['Pedro','**** **** **** 3456'],['Sofía','**** **** **** 7890']],
+        '¿Qué fórmula extrae "1234" de la tarjeta de Ana?', '=DERECHA(B2,4)', '1234', 'Sintaxis: =DERECHA(texto, núm_caracteres)'),
+      act('Extraer dominio de correo', 'TI extrae el dominio del correo electrónico.',
+        [['Correo',''],['ana@empresa.com',''],['carlos@empresa.mx',''],['laura@org.edu',''],['pedro@negocio.net',''],['sofia@corp.io','']],
+        '¿Qué fórmula extrae los últimos 11 caracteres de "ana@empresa.com"?', '=DERECHA(A2,11)', 'empresa.com', 'Sintaxis: =DERECHA(texto, núm_caracteres)'),
+      act('Extraer año de código de producto', 'Un catálogo codifica el año al final del SKU.',
+        [['SKU',''],['LAPTOP-2022',''],['MOUSE-2023',''],['TECLADO-2021',''],['MONITOR-2024',''],['HEADSET-2023','']],
+        '¿Qué fórmula extrae "2022" de "LAPTOP-2022"?', '=DERECHA(A2,4)', '2022', 'Sintaxis: =DERECHA(texto, núm_caracteres)')
+    ],
+
+    'EXTRAE': [
+      act('Extraer año de un código', 'Un analista extrae el año del centro de un código de proyecto.',
+        [['Código',''],['MX-2024-001',''],['US-2023-042',''],['MX-2022-013',''],['BR-2024-007',''],['CA-2021-099','']],
+        '¿Qué fórmula extrae "2024" de "MX-2024-001"?', '=EXTRAE(A2,4,4)', '2024', 'Sintaxis: =EXTRAE(texto, posición_inicial, núm_caracteres)'),
+      act('Extraer ciudad de código postal', 'Un sistema extrae el código de ciudad del folio.',
+        [['Folio',''],['CDM-101-MX',''],['GDL-202-MX',''],['MTY-303-MX',''],['TIJ-404-MX',''],['PUE-505-MX','']],
+        '¿Qué fórmula extrae "101" de "CDM-101-MX"?', '=EXTRAE(A2,5,3)', '101', 'Sintaxis: =EXTRAE(texto, posición_inicial, núm_caracteres)'),
+      act('Extraer mes de CURP', 'RRHH extrae el mes de nacimiento de la CURP (posición 7 y 8).',
+        [['Empleado','CURP'],['Ana','GARA950315MDFRCN09'],['Carlos','LOCA880720HDFPRL02'],['Laura','MALM010204MDFRNR05'],['Pedro','SANP750930HDFNDR08'],['Sofía','RUIS991128MDFZFS01']],
+        '¿Qué fórmula extrae el mes de la CURP de Ana (posición 7, 2 caracteres)?', '=EXTRAE(B2,7,2)', '03', 'Sintaxis: =EXTRAE(texto, posición_inicial, núm_caracteres)'),
+      act('Extraer número de serie', 'Soporte técnico extrae el número de serie de un código de activo.',
+        [['Activo','Código'],['Laptop','LAP-SN12345-MX'],['Monitor','MON-SN67890-MX'],['Teclado','TEC-SN11111-MX'],['Mouse','MOU-SN22222-MX'],['Impresora','IMP-SN33333-MX']],
+        '¿Qué fórmula extrae "SN12345" del código de la Laptop?', '=EXTRAE(B2,5,7)', 'SN12345', 'Sintaxis: =EXTRAE(texto, posición_inicial, núm_caracteres)'),
+      act('Extraer parte del nombre de archivo', 'IT extrae el nombre del sistema del nombre de archivo.',
+        [['Archivo',''],['backup_VENTAS_2024.zip',''],['log_RRHH_2024.txt',''],['rpt_FINANZAS_2024.pdf',''],['data_PRODUCCION_2024.csv',''],['cfg_IT_2024.xml','']],
+        '¿Qué fórmula extrae "VENTAS" de "backup_VENTAS_2024.zip" (posición 8, 6 caracteres)?', '=EXTRAE(A2,8,6)', 'VENTAS', 'Sintaxis: =EXTRAE(texto, posición_inicial, núm_caracteres)')
+    ],
+
+    // LÓGICAS
+    'SI': [
+      act('Aprobar o reprobar', 'Un docente clasifica alumnos según su calificación.',
+        [['Alumno','Calificación'],['Ana','85'],['Carlos','55'],['Laura','90'],['Pedro','45'],['Sofía','75']],
+        '¿Qué fórmula en C2 muestra "Aprobado" si B2≥60, si no "Reprobado"?', '=SI(B2>=60,"Aprobado","Reprobado")', 'Aprobado', 'Sintaxis: =SI(prueba, valor_si_verdadero, valor_si_falso)'),
+      act('Bono por ventas', 'Un gerente asigna bono a vendedores que superen $50,000.',
+        [['Vendedor','Ventas'],['Ramírez','62000'],['García','48000'],['López','55000'],['Torres','38000'],['Morales','71000']],
+        '¿Qué fórmula muestra "Con bono" si ventas>50000, si no "Sin bono"?', '=SI(B2>50000,"Con bono","Sin bono")', 'Con bono', 'Sintaxis: =SI(prueba, valor_si_verdadero, valor_si_falso)'),
+      act('Stock suficiente', 'Un almacén verifica si hay suficiente stock (mínimo 50 unidades).',
+        [['Producto','Stock'],['Laptop','45'],['Mouse','120'],['Teclado','80'],['Monitor','30'],['Auriculares','95']],
+        '¿Qué fórmula muestra "OK" si stock≥50, si no "Reabastecer"?', '=SI(B2>=50,"OK","Reabastecer")', 'Reabastecer', 'Sintaxis: =SI(prueba, valor_si_verdadero, valor_si_falso)'),
+      act('Mayor de edad', 'Una plataforma verifica si los usuarios son mayores de edad.',
+        [['Usuario','Edad'],['U-01','22'],['U-02','16'],['U-03','30'],['U-04','17'],['U-05','25']],
+        '¿Qué fórmula muestra "Permitido" si edad≥18, si no "Restringido"?', '=SI(B2>=18,"Permitido","Restringido")', 'Permitido', 'Sintaxis: =SI(prueba, valor_si_verdadero, valor_si_falso)'),
+      act('Cumplimiento de meta', 'Ventas verifica si cada sucursal alcanzó su meta mensual.',
+        [['Sucursal','Venta','Meta'],['Norte','95000','100000'],['Sur','110000','100000'],['Este','88000','100000'],['Oeste','105000','100000'],['Centro','99000','100000']],
+        '¿Qué fórmula muestra "Meta cumplida" si B2>=C2, si no "Sin meta"?', '=SI(B2>=C2,"Meta cumplida","Sin meta")', 'Sin meta', 'Sintaxis: =SI(prueba, valor_si_verdadero, valor_si_falso)')
+    ],
+
+    'CONTAR.SI': [
+      act('Contar aprobados', 'Un docente cuenta cuántos alumnos aprobaron (≥60).',
+        [['Alumno','Calificación'],['Ana','85'],['Carlos','55'],['Laura','90'],['Pedro','45'],['Sofía','75']],
+        '¿Cuántos alumnos tienen calificación mayor o igual a 60?', '=CONTAR.SI(B2:B6,">=60")', '3', 'Sintaxis: =CONTAR.SI(rango, criterio)'),
+      act('Contar productos de categoría', 'Almacén cuenta cuántos productos son de la categoría "Tech".',
+        [['Producto','Categoría'],['Laptop','Tech'],['Silla','Oficina'],['Mouse','Tech'],['Monitor','Tech'],['Escritorio','Oficina']],
+        '¿Cuántos productos son de categoría "Tech"?', '=CONTAR.SI(B2:B6,"Tech")', '3', 'Sintaxis: =CONTAR.SI(rango, criterio)'),
+      act('Contar empleados de un departamento', 'RRHH cuenta cuántos empleados pertenecen a Ventas.',
+        [['Empleado','Depto'],['Ana','Ventas'],['Luis','IT'],['María','Ventas'],['Pedro','IT'],['Sara','Ventas']],
+        '¿Cuántos empleados hay en el departamento Ventas?', '=CONTAR.SI(B2:B6,"Ventas")', '3', 'Sintaxis: =CONTAR.SI(rango, criterio)'),
+      act('Contar entregas tardías', 'Logística cuenta cuántas entregas se hicieron fuera de tiempo.',
+        [['Envío','Estado'],['ENV-01','A tiempo'],['ENV-02','Tardío'],['ENV-03','A tiempo'],['ENV-04','Tardío'],['ENV-05','Tardío']],
+        '¿Cuántas entregas fueron "Tardío"?', '=CONTAR.SI(B2:B6,"Tardío")', '3', 'Sintaxis: =CONTAR.SI(rango, criterio)'),
+      act('Contar ventas mayores a 10000', 'Un analista cuenta cuántas ventas superan los $10,000.',
+        [['Factura','Monto'],['F-001','8500'],['F-002','12000'],['F-003','15000'],['F-004','9800'],['F-005','11500']],
+        '¿Cuántas facturas son mayores a $10,000?', '=CONTAR.SI(B2:B6,">10000")', '3', 'Sintaxis: =CONTAR.SI(rango, criterio)')
+    ],
+
+    'SUMAR.SI': [
+      act('Suma de ventas por región', 'Ventas suma los montos únicamente del departamento Norte.',
+        [['Región','Monto'],['Norte','15000'],['Sur','8000'],['Norte','12000'],['Este','9500'],['Norte','7500']],
+        '¿Cuánto suman las ventas de la región Norte?', '=SUMAR.SI(A2:A6,"Norte",B2:B6)', '34500', 'Sintaxis: =SUMAR.SI(rango_criterio, criterio, rango_suma)'),
+      act('Suma de salarios por departamento', 'RRHH suma los salarios del departamento IT.',
+        [['Empleado','Depto','Salario'],['Ana','Ventas','8000'],['Luis','IT','9000'],['María','Ventas','7500'],['Pedro','IT','8500'],['Sara','IT','8000']],
+        '¿Cuál es la suma de salarios del departamento IT?', '=SUMAR.SI(B2:B6,"IT",C2:C6)', '25500', 'Sintaxis: =SUMAR.SI(rango_criterio, criterio, rango_suma)'),
+      act('Total de gastos por categoría', 'Finanzas suma los gastos de la categoría "Operación".',
+        [['Gasto','Categoría','Monto'],['Renta','Operación','15000'],['Publicidad','Marketing','5000'],['Servicios','Operación','3000'],['Eventos','Marketing','8000'],['Mantenimiento','Operación','2500']],
+        '¿Cuánto suman los gastos de Operación?', '=SUMAR.SI(B2:B6,"Operación",C2:C6)', '20500', 'Sintaxis: =SUMAR.SI(rango_criterio, criterio, rango_suma)'),
+      act('Suma de unidades por proveedor', 'Almacén suma las unidades recibidas del proveedor A.',
+        [['Proveedor','Producto','Unidades'],['Prov A','Laptop','50'],['Prov B','Mouse','200'],['Prov A','Teclado','80'],['Prov C','Monitor','30'],['Prov A','Audífonos','120']],
+        '¿Cuántas unidades proveyó el Proveedor A en total?', '=SUMAR.SI(A2:A6,"Prov A",C2:C6)', '250', 'Sintaxis: =SUMAR.SI(rango_criterio, criterio, rango_suma)'),
+      act('Suma de horas extras por turno', 'Producción suma las horas extra del turno nocturno.',
+        [['Empleado','Turno','Horas Extra'],['Raúl','Nocturno','4'],['María','Diurno','2'],['José','Nocturno','6'],['Clara','Diurno','1'],['Hugo','Nocturno','3']],
+        '¿Cuántas horas extra trabajó el turno Nocturno en total?', '=SUMAR.SI(B2:B6,"Nocturno",C2:C6)', '13', 'Sintaxis: =SUMAR.SI(rango_criterio, criterio, rango_suma)')
+    ],
+
+    // MATEMÁTICAS
+    'DIVISIÓN': [
+      act('Precio por unidad', 'Un proveedor calcula el precio unitario de cada lote.',
+        [['Producto','Monto Total','Unidades'],['Laptop','150000','10'],['Mouse','3200','16'],['Teclado','4500','9'],['Monitor','90000','20'],['Audífonos','6800','8']],
+        '¿Cuál es el precio unitario de las Laptops?', '=B2/C2', '15000', 'División: =monto/unidades'),
+      act('Porcentaje de cumplimiento', 'Ventas calcula el porcentaje de cumplimiento por sucursal.',
+        [['Sucursal','Venta Real','Meta'],['Norte','85000','100000'],['Sur','110000','100000'],['Este','92000','100000'],['Oeste','78000','100000'],['Centro','105000','100000']],
+        '¿Qué fórmula calcula el cumplimiento de la sucursal Norte?', '=B2/C2', '0.85', 'División simple: =venta_real/meta'),
+      act('Promedio de piezas por hora', 'Producción calcula piezas fabricadas por hora de trabajo.',
+        [['Turno','Piezas','Horas'],['T1','960','8'],['T2','840','7'],['T3','750','6'],['T4','1080','9'],['T5','640','8']],
+        '¿Cuántas piezas por hora fabricó el Turno 1?', '=B2/C2', '120', 'División: =piezas/horas'),
+      act('Costo por kilómetro', 'Una empresa de transporte calcula el costo por km recorrido.',
+        [['Ruta','Costo ($)','Km'],['R-01','4500','300'],['R-02','2800','200'],['R-03','6300','450'],['R-04','3500','250'],['R-05','5200','400']],
+        '¿Cuál es el costo por km de la ruta R-01?', '=B2/C2', '15', 'División: =costo/km'),
+      act('Ingreso por empleado', 'RRHH calcula el ingreso generado por cada empleado.',
+        [['Área','Ingresos ($)','Empleados'],['Ventas','800000','10'],['Marketing','350000','5'],['Soporte','200000','8'],['IT','450000','6'],['Operaciones','600000','12']],
+        '¿Cuál es el ingreso por empleado del área de Ventas?', '=B2/C2', '80000', 'División: =ingresos/empleados')
+    ],
+
+    'MULTIPLICACIÓN': [
+      act('Total de ventas por unidad', 'Un vendedor calcula el total multiplicando cantidad × precio.',
+        [['Producto','Cantidad','Precio Unit.'],['Laptop','5','15000'],['Mouse','20','350'],['Teclado','15','800'],['Monitor','8','4500'],['Audífonos','12','1200']],
+        '¿Cuál es el total de ventas de Laptops?', '=B2*C2', '75000', 'Multiplicación: =cantidad*precio'),
+      act('Cálculo de nómina', 'RRHH calcula el salario total: horas trabajadas × tarifa por hora.',
+        [['Empleado','Horas','Tarifa/Hora ($)'],['Ana','160','85'],['Carlos','152','90'],['Laura','168','75'],['Pedro','160','95'],['Sofía','144','80']],
+        '¿Cuál es el salario total de Ana?', '=B2*C2', '13600', 'Multiplicación: =horas*tarifa'),
+      act('Costo de producción', 'Producción calcula el costo total: unidades × costo unitario.',
+        [['Producto','Unidades','Costo Unit. ($)'],['Silla','50','850'],['Mesa','20','1200'],['Estante','35','600'],['Archivero','15','950'],['Vitrina','10','2000']],
+        '¿Cuál es el costo de producción de las sillas?', '=B2*C2', '42500', 'Multiplicación: =unidades*costo'),
+      act('Área de terrenos', 'Un agente inmobiliario calcula el área de cada terreno.',
+        [['Terreno','Largo (m)','Ancho (m)'],['T-01','25','15'],['T-02','30','20'],['T-03','18','12'],['T-04','40','25'],['T-05','22','18']],
+        '¿Cuál es el área del terreno T-01 en m²?', '=B2*C2', '375', 'Multiplicación: =largo*ancho'),
+      act('Interés simple', 'Finanzas calcula el interés: capital × tasa.',
+        [['Préstamo','Capital ($)','Tasa (%)'],['PR-01','100000','0.05'],['PR-02','50000','0.08'],['PR-03','200000','0.04'],['PR-04','75000','0.06'],['PR-05','120000','0.07']],
+        '¿Cuál es el interés del préstamo PR-01?', '=B2*C2', '5000', 'Multiplicación: =capital*tasa')
+    ],
+
+    'PORCENTAJES': [
+      act('Participación de ventas', 'Un analista calcula qué porcentaje representa cada producto del total.',
+        [['Producto','Ventas','Total'],['Laptop','15000','51500'],['Mouse','3200','51500'],['Teclado','4500','51500'],['Monitor','22000','51500'],['Audífonos','6800','51500']],
+        '¿Qué fórmula calcula el % de ventas de Laptop respecto al total?', '=B2/C2*100', '29.13', 'Porcentaje: =parte/total*100'),
+      act('Descuento sobre precio', 'Un vendedor calcula el monto del descuento del 15% sobre el precio.',
+        [['Producto','Precio ($)','Descuento (%)'],['Laptop','15000','15'],['Mouse','350','10'],['Teclado','800','20'],['Monitor','4500','12'],['Audífonos','1200','8']],
+        '¿Cuál es el monto de descuento de la Laptop?', '=B2*C2/100', '2250', 'Descuento: =precio*porcentaje/100'),
+      act('Impuesto IVA', 'Finanzas calcula el IVA (16%) de cada producto.',
+        [['Producto','Precio antes IVA'],['Servicio A','5000'],['Servicio B','12000'],['Servicio C','8500'],['Servicio D','3200'],['Servicio E','9800']],
+        '¿Cuál es el IVA (16%) del Servicio A?', '=B2*16/100', '800', 'IVA: =precio*16/100'),
+      act('Porcentaje de asistencia', 'Un maestro calcula el % de asistencia de cada alumno.',
+        [['Alumno','Asistencias','Total Clases'],['Ana','28','30'],['Carlos','25','30'],['Laura','30','30'],['Pedro','22','30'],['Sofía','27','30']],
+        '¿Cuál es el porcentaje de asistencia de Ana?', '=B2/C2*100', '93.33', 'Porcentaje: =asistencias/total*100'),
+      act('Comisión por ventas', 'Ventas calcula la comisión del 5% sobre las ventas de cada agente.',
+        [['Agente','Ventas ($)'],['Ramírez','62000'],['García','48000'],['López','55000'],['Torres','38000'],['Morales','71000']],
+        '¿Cuál es la comisión (5%) del agente Ramírez?', '=B2*5/100', '3100', 'Comisión: =ventas*5/100')
+    ],
+
+    'POTENCIAS': [
+      act('Área de un cuadrado', 'Geometría calcula el área de cuadrados elevando el lado al cuadrado.',
+        [['Figura','Lado (m)'],['Cuadrado A','5'],['Cuadrado B','8'],['Cuadrado C','12'],['Cuadrado D','3'],['Cuadrado E','10']],
+        '¿Cuál es el área del Cuadrado A (5²)?', '=POTENCIA(B2,2)', '25', 'Sintaxis: =POTENCIA(número, exponente)'),
+      act('Interés compuesto', 'Finanzas calcula el monto final con interés compuesto.',
+        [['Período','Base','Exponente'],['Año 1','1.05','1'],['Año 2','1.05','2'],['Año 3','1.05','3'],['Año 4','1.05','4'],['Año 5','1.05','5']],
+        '¿Cuál es el factor de crecimiento al año 2 (1.05²)?', '=POTENCIA(B3,C3)', '1.1025', 'Sintaxis: =POTENCIA(base, exponente)'),
+      act('Crecimiento poblacional', 'Un demógrafo calcula el crecimiento usando potencias.',
+        [['Año','Base','Potencia'],['2024','2','1'],['2025','2','2'],['2026','2','3'],['2027','2','4'],['2028','2','5']],
+        '¿Cuánto es 2 elevado a la potencia 3?', '=POTENCIA(B4,C4)', '8', 'Sintaxis: =POTENCIA(base, exponente)'),
+      act('Potencias de 10', 'Un científico trabaja con potencias de 10 para conversiones.',
+        [['Prefijo','Base','Exponente'],['Kilo','10','3'],['Mega','10','6'],['Giga','10','9'],['Tera','10','12'],['Peta','10','15']],
+        '¿Cuánto es 10 elevado a la 3 (Kilo)?', '=POTENCIA(B2,C2)', '1000', 'Sintaxis: =POTENCIA(número, exponente)'),
+      act('Cálculo de volumen', 'Geometría calcula el volumen de cubos.',
+        [['Cubo','Arista (m)'],['Cubo A','3'],['Cubo B','4'],['Cubo C','5'],['Cubo D','2'],['Cubo E','6']],
+        '¿Cuál es el volumen del Cubo A (3³)?', '=POTENCIA(B2,3)', '27', 'Volumen de cubo: =POTENCIA(arista, 3)')
+    ],
+
+    'RAÍCES': [
+      act('Lado de un cuadrado', 'Geometría calcula el lado de un cuadrado a partir de su área.',
+        [['Figura','Área (m²)'],['Cuadrado A','144'],['Cuadrado B','256'],['Cuadrado C','81'],['Cuadrado D','625'],['Cuadrado E','400']],
+        '¿Cuál es el lado del Cuadrado A (√144)?', '=RAIZ(B2)', '12', 'Sintaxis: =RAIZ(número)'),
+      act('Desviación estándar manual', 'Un estadístico calcula raíces cuadradas de varianzas.',
+        [['Muestra','Varianza'],['M-01','4'],['M-02','9'],['M-03','16'],['M-04','25'],['M-05','36']],
+        '¿Cuál es la raíz cuadrada de la varianza de M-01?', '=RAIZ(B2)', '2', 'Sintaxis: =RAIZ(número)'),
+      act('Velocidad media de partículas', 'Física calcula la velocidad media usando raíz cuadrada.',
+        [['Partícula','Energía²'],['P-01','100'],['P-02','225'],['P-03','400'],['P-04','625'],['P-05','900']],
+        '¿Cuál es la raíz cuadrada de la energía de P-01?', '=RAIZ(B2)', '10', 'Sintaxis: =RAIZ(número)'),
+      act('Cálculo de la hipotenusa', 'Trigonometría calcula la hipotenusa de triángulos rectángulos.',
+        [['Triángulo','Suma de cuadrados'],['T-01','25'],['T-02','100'],['T-03','169'],['T-04','289'],['T-05','625']],
+        '¿Cuál es la hipotenusa del triángulo T-01 (√25)?', '=RAIZ(B2)', '5', 'Sintaxis: =RAIZ(número)'),
+      act('Costo unitario óptimo', 'Logística usa raíces para calcular el lote económico de pedido.',
+        [['Producto','Valor'],['Laptop','90000'],['Monitor','40000'],['Teclado','6400'],['Mouse','1225'],['Audífonos','14400']],
+        '¿Cuál es la raíz cuadrada de 90000?', '=RAIZ(B2)', '300', 'Sintaxis: =RAIZ(número)')
+    ],
+
+    'RESTA': [
+      act('Ganancia por producto', 'Un comerciante calcula la ganancia: precio de venta menos costo.',
+        [['Producto','Precio Venta','Costo'],['Laptop','18000','15000'],['Mouse','500','350'],['Teclado','1200','800'],['Monitor','6000','4500'],['Audífonos','1800','1200']],
+        '¿Cuál es la ganancia de la Laptop?', '=B2-C2', '3000', 'Resta: =precio_venta - costo'),
+      act('Saldo disponible', 'Un banco calcula el saldo: ingresos menos gastos del mes.',
+        [['Mes','Ingresos','Gastos'],['Enero','25000','18000'],['Febrero','27000','22000'],['Marzo','30000','24500'],['Abril','28000','19000'],['Mayo','32000','27000']],
+        '¿Cuál es el saldo de enero?', '=B2-C2', '7000', 'Resta: =ingresos - gastos'),
+      act('Días restantes de contrato', 'Legal calcula los días que restan de cada contrato.',
+        [['Contrato','Duración (días)','Días transcurridos'],['CT-01','365','120'],['CT-02','180','90'],['CT-03','365','200'],['CT-04','730','400'],['CT-05','365','50']],
+        '¿Cuántos días restan del contrato CT-01?', '=B2-C2', '245', 'Resta: =duración - días_transcurridos'),
+      act('Diferencia de temperatura', 'Una planta industrial calcula la diferencia de temperatura.',
+        [['Zona','Temp. Real','Temp. Ideal'],['Zona A','85','80'],['Zona B','72','75'],['Zona C','90','85'],['Zona D','68','70'],['Zona E','95','90']],
+        '¿Cuánto difiere la temperatura de la Zona A respecto al ideal?', '=B2-C2', '5', 'Resta: =real - ideal'),
+      act('Stock después de ventas', 'Almacén calcula el stock restante tras las ventas del día.',
+        [['Producto','Stock Inicial','Ventas'],['Laptop','50','8'],['Mouse','200','45'],['Teclado','120','32'],['Monitor','40','12'],['Audífonos','80','25']],
+        '¿Cuántas Laptops quedan en stock?', '=B2-C2', '42', 'Resta: =stock_inicial - ventas')
+    ],
+
+    'SUMA': [
+      act('Total de ventas del mes', 'Una tienda suma sus ventas diarias de la semana.',
+        [['Día','Ventas ($)'],['Lunes','12000'],['Martes','15000'],['Miércoles','9800'],['Jueves','17500'],['Viernes','13200']],
+        '¿Cuál es el total de ventas de la semana?', '=SUMA(B2:B6)', '67500', 'Sintaxis: =SUMA(rango)'),
+      act('Total de gastos del hogar', 'Una familia suma sus gastos mensuales.',
+        [['Concepto','Monto ($)'],['Renta','8000'],['Comida','4500'],['Transporte','1200'],['Servicios','900'],['Entretenimiento','600']],
+        '¿Cuál es el total de gastos?', '=SUMA(B2:B6)', '15200', 'Sintaxis: =SUMA(rango)'),
+      act('Unidades producidas', 'Producción suma las unidades fabricadas por turno.',
+        [['Turno','Unidades'],['T1','320'],['T2','415'],['T3','380'],['T4','440'],['T5','290']],
+        '¿Cuántas unidades se produjeron en total?', '=SUMA(B2:B6)', '1845', 'Sintaxis: =SUMA(rango)'),
+      act('Horas de capacitación', 'RRHH suma las horas de capacitación por empleado.',
+        [['Empleado','Horas'],['Ana','12'],['Carlos','8'],['Laura','15'],['Pedro','10'],['Sofía','6']],
+        '¿Cuántas horas de capacitación se dieron en total?', '=SUMA(B2:B6)', '51', 'Sintaxis: =SUMA(rango)'),
+      act('Inventario total', 'Almacén suma todas las existencias del inventario.',
+        [['Producto','Existencias'],['Sillas','45'],['Mesas','12'],['Lámparas','78'],['Estantes','23'],['Archiveros','34']],
+        '¿Cuántos artículos hay en total?', '=SUMA(B2:B6)', '192', 'Sintaxis: =SUMA(rango)')
+    ]
+  };
+
+  // si la fórmula tiene banco propio úsalo; si no, usa el simulador como base
+  if (BANK[formula]) {
+    return BANK[formula].map((a, i) => ({ num: i + 1, ...a }));
+  }
+
+  // fallback genérico: 5 escenarios distintos adaptados al SIMULATOR_DATA
   const d = SIMULATOR_DATA[formula] || SIMULATOR_DATA['SUMA'];
   const scenarios = [
-    { ctx: 'Una tienda de tecnología quiere analizar sus ventas mensuales.', col: ['Mes','Ventas'], rows: [['Enero','12000'],['Febrero','15000'],['Marzo','9800'],['Abril','17500'],['Mayo','13200']] },
-    { ctx: 'Un maestro necesita analizar las calificaciones de su grupo.', col: ['Alumno','Calificación'], rows: [['Ana','85'],['Carlos','92'],['Laura','78'],['Pedro','95'],['Sofía','88']] },
-    { ctx: 'Una empresa revisa el salario de sus empleados por departamento.', col: ['Empleado','Salario'], rows: [['Ana','8000'],['Luis','9500'],['María','7800'],['Pedro','10200'],['Sara','8600']] },
-    { ctx: 'Un almacén controla el inventario de sus productos.', col: ['Producto','Unidades'], rows: [['Laptop','45'],['Mouse','120'],['Teclado','80'],['Monitor','30'],['Audífonos','95']] },
-    { ctx: 'Una clínica registra el peso de sus pacientes en kg.', col: ['Paciente','Peso(kg)'], rows: [['Paciente 1','68'],['Paciente 2','75'],['Paciente 3','82'],['Paciente 4','59'],['Paciente 5','91']] }
+    { ctx:'Una tienda analiza sus ventas mensuales.', col:['Mes','Ventas'], rows:[['Enero','12000'],['Febrero','15000'],['Marzo','9800'],['Abril','17500'],['Mayo','13200']] },
+    { ctx:'Un maestro revisa las calificaciones de su grupo.', col:['Alumno','Calificación'], rows:[['Ana','85'],['Carlos','92'],['Laura','78'],['Pedro','95'],['Sofía','88']] },
+    { ctx:'Una empresa revisa el salario de sus empleados.', col:['Empleado','Salario'], rows:[['Ana','8000'],['Luis','9500'],['María','7800'],['Pedro','10200'],['Sara','8600']] },
+    { ctx:'Un almacén controla el inventario de sus productos.', col:['Producto','Unidades'], rows:[['Laptop','45'],['Mouse','120'],['Teclado','80'],['Monitor','30'],['Audífonos','95']] },
+    { ctx:'Una clínica registra el peso de sus pacientes en kg.', col:['Paciente','Peso(kg)'], rows:[['P-01','68'],['P-02','75'],['P-03','82'],['P-04','59'],['P-05','91']] }
   ];
-  const activities = scenarios.map((s, i) => ({
+  return scenarios.map((s, i) => ({
     num: i + 1,
-    titulo: `Ejercicio ${i + 1}: ${s.ctx.split(' ').slice(0,4).join(' ')}...`,
+    titulo: `Actividad ${i + 1} — ${formula}`,
     contexto: s.ctx,
     datos: [s.col, ...s.rows],
     pregunta: d.question,
@@ -1574,8 +2193,6 @@ function generateStaticActivities(formula) {
     resultado_esperado: d.answer,
     pista: d.hint
   }));
-  generatedActivities = activities;
-  renderActivities(formula, activities);
 }
 
 function renderActivities(formula, activities) {
